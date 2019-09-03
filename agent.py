@@ -12,10 +12,19 @@ class Agent:
         """
         self.nA = nA
         self.Q = defaultdict(lambda: np.zeros(self.nA))
-        #init epsilon, alpha, gamma
-        self.eps = 0.005
-        self.alpha = 0.05
-        self.gamma = 1.0
+
+        self.epsilon = 0.0001
+        self.alpha = 0.2
+        self.gamma = 1
+
+        print('Epsilon: {}, Alpha = {}'.format(self.epsilon ,self.alpha) )
+
+    def epsilon_greedy_probs(self, Q_s, epsilon):
+        """ obtains the action probabilities corresponding to epsilon-greedy policy """
+
+        policy_s = np.ones(self.nA) * epsilon / self.nA
+        policy_s[np.argmax(Q_s)] = 1 - epsilon + (epsilon / self.nA)
+        return policy_s    
 
     def select_action(self, state):
         """ Given the state, select an action.
@@ -28,13 +37,15 @@ class Agent:
         =======
         - action: an integer, compatible with the task's action space
         """
-        # Define probability distrb. for eps-greedy policy for state
-        policy_state = np.ones(self.nA) * self.eps / self.nA
-        action_greedy = np.argmax(self.Q[state])
-        policy_state[action_greedy] = 1 - self.eps + (self.eps / self.nA)
-        
-        # Define action from eps-greedy policy
-        action = np.random.choice(self.nA, p=policy_state)        
+
+        #Use epsilon-greedy(Q) policy to choose the action.
+        #state_policy = np.ones(self.nA) * self.epsilon / self.nA
+        #state_policy[np.argmax(self.Q[state])] = 1 - self.epsilon + (self.epsilon / self.nA)
+
+        state_policy = self.epsilon_greedy_probs(self.Q[state], self.epsilon)
+
+        action = np.random.choice(np.arange(self.nA), p=state_policy)
+
         return action
 
     def step(self, state, action, reward, next_state, done):
@@ -48,9 +59,8 @@ class Agent:
         - next_state: the current state of the environment
         - done: whether the episode is complete (True or False)
         """
-        # Get the next action for the next state
-        next_action = self.select_action(next_state)
-        # Calculate discounted reward for next state & next action
-        G_t  = reward + self.gamma * self.Q[next_state][next_action]
-        # Update knowledge
-        self.Q[state][action] += self.alpha * (G_t - self.Q[state][action])
+
+        #Q-learning (sarsamax)
+        old_Q = self.Q[state][action]
+
+        self.Q[state][action] = old_Q + (self.alpha * (reward + (self.gamma * np.max(self.Q[next_state]) - old_Q)))
